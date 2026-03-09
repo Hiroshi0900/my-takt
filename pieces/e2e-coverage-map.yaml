@@ -1,0 +1,151 @@
+name: e2e-coverage-map
+description: 既存 Playwright E2E 資産を棚卸しし、P0/P1/P2 と mock/local-real-api/stg 軸で管理する初版ケース台帳を work/ 配下に作成する（ドキュメント専用）
+piece_config:
+  provider_options:
+    codex:
+      network_access: false
+    opencode:
+      network_access: false
+max_movements: 12
+initial_movement: investigate-specs
+
+policies:
+  docs-work-only: ../policies/docs-work-only-e2e-map.md
+
+instructions:
+  investigate-specs: ../instructions/e2e-coverage-investigate-specs.md
+  define-classification: ../instructions/e2e-coverage-define-classification.md
+  draft-coverage-map: ../instructions/e2e-coverage-draft-map.md
+  review-map: ../instructions/e2e-coverage-review-map.md
+  finalize-map: ../instructions/e2e-coverage-finalize-map.md
+
+report_formats:
+  e2e-coverage-inventory: ../output-contracts/e2e-coverage-inventory.md
+  e2e-coverage-classification: ../output-contracts/e2e-coverage-classification.md
+  e2e-coverage-review: ../output-contracts/e2e-coverage-review.md
+  e2e-coverage-final: ../output-contracts/e2e-coverage-final.md
+
+movements:
+  - name: investigate-specs
+    edit: false
+    persona: steering-analyst
+    policy: docs-work-only
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Bash
+    instruction: investigate-specs
+    output_contracts:
+      report:
+        - name: e2e-coverage-inventory.md
+          format: e2e-coverage-inventory
+    rules:
+      - condition: 棚卸し完了、分類対象が把握できた
+        next: define-classification
+      - condition: src/test/e2e が存在しない、または spec が見つからない
+        next: ABORT
+        appendix: |
+          原因:
+          - `src/test/e2e` 配下の `.spec.ts` を確認できない
+
+  - name: define-classification
+    edit: false
+    persona: planner
+    policy: docs-work-only
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Bash
+    instruction: define-classification
+    output_contracts:
+      report:
+        - name: e2e-coverage-classification.md
+          format: e2e-coverage-classification
+    rules:
+      - condition: 分類基準と台帳構造が確定した
+        next: draft-coverage-map
+      - condition: 要件が不明確、分類基準を確定できない
+        next: ABORT
+        appendix: |
+          確認事項:
+          - `P0/P1/P2` の優先度定義の解像度
+          - `local-real-api` と `stg` の境界定義
+
+  - name: draft-coverage-map
+    edit: true
+    persona: steering-analyst
+    policy: docs-work-only
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+    required_permission_mode: edit
+    instruction: draft-coverage-map
+    rules:
+      - condition: 主成果物の初版作成完了
+        next: review-map
+      - condition: 情報不足で台帳初版を作れない
+        next: ABORT
+        appendix: |
+          原因:
+          - 棚卸し結果または分類基準の不足
+
+  - name: review-map
+    edit: false
+    persona: supervisor
+    policy: docs-work-only
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Bash
+    instruction: review-map
+    output_contracts:
+      report:
+        - name: e2e-coverage-review.md
+          format: e2e-coverage-review
+    rules:
+      - condition: 受け入れ条件を満たす（軽微のみ）
+        next: finalize-map
+      - condition: 修正が必要（不足・粒度不一致・分類漏れあり）
+        next: finalize-map
+      - condition: スコープ逸脱（コード変更や設定変更を含む）
+        next: ABORT
+        appendix: |
+          原因:
+          - docs-only 制約に違反
+
+  - name: finalize-map
+    edit: true
+    persona: steering-analyst
+    policy: docs-work-only
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+    required_permission_mode: edit
+    pass_previous_response: false
+    instruction: finalize-map
+    output_contracts:
+      report:
+        - name: e2e-coverage-final.md
+          format: e2e-coverage-final
+    rules:
+      - condition: 完了条件・受け入れ条件を満たし最終化完了
+        next: COMPLETE
+      - condition: 再レビューが必要
+        next: review-map
+      - condition: 判断できない、情報不足
+        next: ABORT
+        appendix: |
+          原因:
+          - 最終化に必要な情報が不足
+

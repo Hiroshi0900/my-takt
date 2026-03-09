@@ -1,0 +1,255 @@
+name: design-generic
+description: DDD/Clean Architecture 設計Piece（汎用Go向け）- 調査→設計→レビュー→実装→テスト→ガードレビュー
+piece_config:
+  provider_options:
+    codex:
+      network_access: false
+    opencode:
+      network_access: false
+max_movements: 40
+initial_movement: investigate
+
+personas:
+  investigator: ../personas/investigator.md
+  ddd-designer: ../personas/ddd-designer-generic.md
+  implementer: ../personas/implementer-generic.md
+  guardian: ../personas/guardian-generic.md
+
+policies:
+  go-clean-architecture: ../policies/go-clean-architecture.md
+  go-ddd-patterns: ../policies/go-ddd-patterns.md
+  go-testing: ../policies/go-testing.md
+
+instructions:
+  investigate: ../instructions/investigate-generic.md
+  design-domain: ../instructions/design-domain-generic.md
+  implement: ../instructions/implement-generic.md
+  generate-tests: ../instructions/generate-tests-generic.md
+  review-guard: ../instructions/review-guard-generic.md
+  review-guard-final: ../instructions/review-guard-final-generic.md
+
+knowledge:
+  go-project-structure: ../knowledge/go-project-structure-ddd-clean-architecture.md
+
+report_formats:
+  investigation-report: ../output-contracts/investigation-report.md
+  design-report: ../output-contracts/design-report.md
+  guard-report: ../output-contracts/guard-report.md
+
+loop_monitors:
+  - cycle:
+      - design-domain
+      - review-domain
+    threshold: 2
+    judge:
+      persona: guardian
+      instruction_template: |
+        design-domain と review-domain のループが {cycle_count} 回繰り返されました。
+
+        **参照するレポート:**
+        - ドメイン設計: {report:design-report.md}
+        - ガードレール: {report:guard-report.md}
+
+        **判断基準:**
+        - 各サイクルで設計が改善されているか
+        - 同じ問題が繰り返されていないか
+      rules:
+        - condition: 健全（設計が改善されている）
+          next: review-domain
+        - condition: 非生産的（改善なし）
+          next: ABORT
+
+  - cycle:
+      - guard-review
+      - fix-issues
+    threshold: 3
+    judge:
+      persona: guardian
+      instruction_template: |
+        guard-review と fix-issues のループが {cycle_count} 回繰り返されました。
+
+        **参照するレポート:**
+        - ガードレール: {report:guard-report.md}
+      rules:
+        - condition: 健全（進捗あり）
+          next: guard-review
+        - condition: 非生産的（改善なし）
+          next: ABORT
+
+movements:
+  - name: investigate
+    edit: false
+    persona: investigator
+    policy: go-clean-architecture
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Bash
+    instruction: investigate
+    output_contracts:
+      report:
+        - name: investigation-report.md
+          format: investigation-report
+    rules:
+      - condition: 調査完了、設計に必要な情報が揃った
+        next: design-domain
+      - condition: 情報不足
+        next: investigate
+
+  - name: design-domain
+    edit: false
+    persona: ddd-designer
+    policy:
+      - go-ddd-patterns
+      - go-clean-architecture
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+    instruction: design-domain
+    output_contracts:
+      report:
+        - name: design-report.md
+          format: design-report
+    rules:
+      - condition: 設計完了（値オブジェクト・エンティティ・リポジトリI/F）
+        next: review-domain
+      - condition: 追加調査が必要
+        next: investigate
+
+  - name: review-domain
+    edit: false
+    persona: guardian
+    policy:
+      - go-ddd-patterns
+      - go-clean-architecture
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+    instruction: review-guard
+    output_contracts:
+      report:
+        - name: domain-review-report.md
+          format: guard-report
+    rules:
+      - condition: GO（設計品質十分、DDD/CleanArch準拠）
+        next: design-usecase
+      - condition: NO-GO（設計に問題あり）
+        next: design-domain
+
+  - name: design-usecase
+    edit: false
+    persona: ddd-designer
+    policy:
+      - go-clean-architecture
+      - go-ddd-patterns
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+    instruction: design-domain
+    output_contracts:
+      report:
+        - name: usecase-design-report.md
+          format: design-report
+    rules:
+      - condition: ユースケースI/F・Input/Output・リポジトリI/F設計完了
+        next: implement
+      - condition: ドメイン設計の見直しが必要
+        next: design-domain
+
+  - name: implement
+    edit: true
+    persona: implementer
+    policy:
+      - go-clean-architecture
+      - go-ddd-patterns
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+    required_permission_mode: edit
+    instruction: implement
+    rules:
+      - condition: 実装完了（buildが通る）
+        next: generate-tests
+      - condition: 実装中に設計の問題を発見
+        next: design-usecase
+
+  - name: generate-tests
+    edit: true
+    persona: implementer
+    policy: go-testing
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+    required_permission_mode: edit
+    instruction: generate-tests
+    rules:
+      - condition: テスト生成完了
+        next: guard-review
+      - condition: テスト実行でエラー発見
+        next: implement
+
+  - name: guard-review
+    edit: false
+    persona: guardian
+    policy:
+      - go-clean-architecture
+      - go-ddd-patterns
+      - go-testing
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Bash
+    instruction: review-guard-final
+    output_contracts:
+      report:
+        - name: guard-report.md
+          format: guard-report
+    rules:
+      - condition: 問題なし（Critical/High未解消0、Warning理由明記、要件1:1トレーサビリティ充足、OpenAPI差分0、lint/test/build成功）
+        next: COMPLETE
+      - condition: Critical/High未解消またはWarning理由不足、トレーサビリティ漏れ、OpenAPI差分、lint/test/build失敗
+        next: fix-issues
+
+  - name: fix-issues
+    edit: true
+    persona: implementer
+    policy:
+      - go-clean-architecture
+      - go-ddd-patterns
+      - go-testing
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+    required_permission_mode: edit
+    pass_previous_response: false
+    instruction: implement
+    rules:
+      - condition: 修正完了
+        next: guard-review
+      - condition: 設計の見直しが必要
+        next: design-usecase

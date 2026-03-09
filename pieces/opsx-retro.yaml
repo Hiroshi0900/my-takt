@@ -1,0 +1,106 @@
+name: opsx-retro
+description: OpenSpec Retro - PR/CI/レビューの失敗を振り返り、承認前提の再発防止ルール提案を作成する
+piece_config:
+  provider_options:
+    codex:
+      network_access: true
+    opencode:
+      network_access: true
+max_movements: 12
+initial_movement: capture
+
+personas:
+  opsx-explorer: ../personas/opsx-explorer.md
+  opsx-proposer: ../personas/opsx-proposer.md
+
+instructions:
+  capture: ../instructions/opsx-retro-capture.md
+  analyze: ../instructions/opsx-retro-analyze.md
+  propose: ../instructions/opsx-retro-propose.md
+
+report_formats:
+  opsx-retro-capture: ../output-contracts/opsx-retro-capture.md
+  opsx-retro-analysis: ../output-contracts/opsx-retro-analysis.md
+  opsx-retro-report: ../output-contracts/opsx-retro-report.md
+
+movements:
+  - name: capture
+    edit: true
+    persona: opsx-explorer
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Write
+      - Bash
+      - WebSearch
+      - WebFetch
+    required_permission_mode: edit
+    instruction: capture
+    output_contracts:
+      report:
+        - name: retro-capture.md
+          format: opsx-retro-capture
+    rules:
+      - condition: 証跡収集完了
+        next: analyze
+      - condition: 証跡不足で分析不能
+        next: ABORT
+        appendix: |
+          追加で必要な情報:
+          - {不足情報1}
+          - {不足情報2}
+
+  - name: analyze
+    edit: true
+    persona: opsx-explorer
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Write
+      - Bash
+      - WebSearch
+      - WebFetch
+    required_permission_mode: edit
+    instruction: analyze
+    output_contracts:
+      report:
+        - name: retro-analysis.md
+          format: opsx-retro-analysis
+    rules:
+      - condition: 根本原因と再発防止候補を特定
+        next: propose
+      - condition: 分析継続が必要
+        next: analyze
+      - condition: 原因特定不能
+        next: ABORT
+        appendix: |
+          分析不能理由:
+          - {reason}
+
+  - name: propose
+    edit: true
+    persona: opsx-proposer
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Write
+      - Bash
+      - WebSearch
+      - WebFetch
+    required_permission_mode: edit
+    instruction: propose
+    output_contracts:
+      report:
+        - name: retro-report.md
+          format: opsx-retro-report
+    rules:
+      - condition: 学習提案を作成（承認待ち）
+        next: COMPLETE
+      - condition: 提案作成に失敗
+        next: ABORT
+        appendix: |
+          理由:
+          - {failure_reason}

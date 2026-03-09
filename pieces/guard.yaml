@@ -1,0 +1,139 @@
+name: guard
+description: ガードレール単体チェック（汎用Go/DDD、PR前レビュー用）- CleanArch/DDD違反・エラー処理・テスト不足を全観点チェック
+piece_config:
+  provider_options:
+    codex:
+      network_access: false
+    opencode:
+      network_access: false
+max_movements: 10
+initial_movement: review-architecture
+
+# --- カスタムファセット セクションマップ ---
+personas:
+  guardian: ../personas/guardian-generic.md
+  implementer: ../personas/implementer-generic.md
+
+policies:
+  go-clean-architecture: ../policies/go-clean-architecture.md
+  go-ddd-patterns: ../policies/go-ddd-patterns.md
+  go-testing: ../policies/go-testing.md
+
+instructions:
+  review-guard: ../instructions/review-guard-generic.md
+  review-guard-final: ../instructions/review-guard-final-generic.md
+  implement: ../instructions/implement-generic.md
+
+knowledge:
+  go-project-structure: ../knowledge/go-project-structure-ddd-clean-architecture.md
+
+report_formats:
+  guard-report: ../output-contracts/guard-report.md
+
+# --- Movement定義 ---
+movements:
+  # ===== 観点 1: Clean Architecture レビュー =====
+  - name: review-architecture
+    edit: false
+    persona: guardian
+    policy: go-clean-architecture
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+    instruction: review-guard
+    output_contracts:
+      report:
+        - name: arch-review.md
+          format: guard-report
+    rules:
+      - condition: CleanArchチェック完了
+        next: review-ddd
+
+  # ===== 観点 2: DDDパターン レビュー =====
+  - name: review-ddd
+    edit: false
+    persona: guardian
+    policy: go-ddd-patterns
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+    instruction: review-guard
+    output_contracts:
+      report:
+        - name: ddd-review.md
+          format: guard-report
+    rules:
+      - condition: DDDチェック完了
+        next: review-errors
+
+  # ===== 観点 3: エラー処理 レビュー =====
+  - name: review-errors
+    edit: false
+    persona: guardian
+    policy:
+      - go-clean-architecture
+      - go-ddd-patterns
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+    instruction: review-guard
+    output_contracts:
+      report:
+        - name: error-review.md
+          format: guard-report
+    rules:
+      - condition: エラー処理チェック完了
+        next: review-tests
+
+  # ===== 観点 4: テスト レビュー =====
+  - name: review-tests
+    edit: false
+    persona: guardian
+    policy: go-testing
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Bash
+    instruction: review-guard-final
+    output_contracts:
+      report:
+        - name: test-review.md
+          format: guard-report
+    rules:
+      - condition: テストチェック完了、問題なし（Critical/High未解消0、Warning理由明記、要件1:1トレーサビリティ充足、OpenAPI差分0、lint/test/build成功）
+        next: COMPLETE
+      - condition: テストチェック完了、問題あり（Critical/High未解消またはWarning理由不足、トレーサビリティ漏れ、OpenAPI差分、lint/test/build失敗を含む）
+        next: fix-issues
+
+  # ===== 修正フェーズ（問題があった場合） =====
+  - name: fix-issues
+    edit: true
+    persona: implementer
+    policy:
+      - go-clean-architecture
+      - go-ddd-patterns
+      - go-testing
+    knowledge: go-project-structure
+    allowed_tools:
+      - Read
+      - Glob
+      - Grep
+      - Edit
+      - Write
+      - Bash
+    required_permission_mode: edit
+    pass_previous_response: false
+    instruction: implement
+    rules:
+      - condition: 全問題修正完了
+        next: COMPLETE
+      - condition: 修正完了、再レビューが必要
+        next: review-architecture

@@ -1,0 +1,23 @@
+# Ignore everything by default
+*
+
+# This file itself
+!.gitignore
+
+# Project configuration
+!config.yaml
+
+# TAKTテンプレートファイル（コミット対象）
+!pieces/
+!personas/
+!policies/
+!instructions/
+!knowledge/
+!output-contracts/
+# 各ディレクトリ内の .md と .yaml を許可
+!pieces/*.yaml
+!personas/*.md
+!policies/*.md
+!instructions/*.md
+!knowledge/*.md
+!output-contracts/*.md
