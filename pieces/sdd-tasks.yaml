@@ -27,12 +27,14 @@ movements:
       - sdd-tasks
       - pr-batch-size
     knowledge: architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
     required_permission_mode: edit
     instruction: generate-tasks
     output_contracts:

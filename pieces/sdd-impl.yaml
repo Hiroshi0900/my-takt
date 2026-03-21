@@ -16,7 +16,9 @@ policies:
 instructions:
   check-branch-freshness: ../instructions/check-branch-freshness.md
   plan: ../instructions/impl-plan.md
-  implement: ../instructions/impl-execute.md
+  implement: ../instructions/shared-implement-execute.md
+  lint-gate: ../instructions/shared-lint-gate.md
+  supervise-pr-batch: ../instructions/shared-supervise-pr-batch.md
 
 report_formats:
   branch-freshness-check: ../output-contracts/branch-freshness-check.md
@@ -29,7 +31,7 @@ loop_monitors:
     threshold: 5
     judge:
       persona: supervisor
-      instruction_template: |
+      instruction: |
         plan と implement のバッチループが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
@@ -51,7 +53,7 @@ loop_monitors:
     threshold: 3
     judge:
       persona: supervisor
-      instruction_template: |
+      instruction: |
         ai_review と ai_fix のループが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
@@ -72,11 +74,13 @@ movements:
   - name: check-branch-freshness
     edit: false
     persona: planner
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
     instruction: check-branch-freshness
     output_contracts:
       report:
@@ -96,13 +100,15 @@ movements:
     persona: planner
     policy: pr-batch-size
     knowledge: architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+          - WebSearch
+          - WebFetch
     instruction: plan
     output_contracts:
       report:
@@ -138,15 +144,17 @@ movements:
     knowledge:
       - backend
       - architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: implement
     output_contracts:
@@ -170,12 +178,14 @@ movements:
     policy:
       - review
       - ai-antipattern
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - WebSearch
+          - WebFetch
     instruction: ai-review
     output_contracts:
       report:
@@ -198,15 +208,17 @@ movements:
     knowledge:
       - backend
       - architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     pass_previous_response: false
     instruction: ai-fix
@@ -223,23 +235,14 @@ movements:
     edit: false
     persona: supervisor
     policy: review
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
-    instruction_template: |
-      PR前の実行品質ゲートを検証せよ。
-
-      **必須チェック**
-      - `lint` コマンドを特定し、実行して成功を確認する
-      - `test` コマンドを特定し、実行して成功を確認する
-      - プロジェクト標準の `build` コマンドを実行し、成功を確認する
-      - 各コマンドの実行コマンド、終了コード、失敗要点を `supervisor-validation.md` に記録する
-
-      **判定**
-      - いずれか未特定・未実行・失敗なら `品質ゲート不合格（lint/test/build）`
-      - すべて成功なら `品質ゲート合格（lint/test/build）`
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+    instruction: lint-gate
     rules:
       - condition: 品質ゲート合格（lint/test/build）
         next: supervise
@@ -251,47 +254,17 @@ movements:
     edit: false
     persona: supervisor
     policy: review
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+          - WebSearch
+          - WebFetch
     pass_previous_response: false
-    instruction_template: |
-      ## 監督フェーズ（PRバッチ完了対応）
-      今回は全タスク完了だけでなく、「現在のPRバッチが完了しており、残タスクは次回セッションへ回してよい」場合も完了可能です。
-
-      **実行ベース品質ゲート（追加・必須）**
-      - `lint` と `test` のコマンドをリポジトリ定義（make / task / just / package scripts / CI）から特定し、両方を実行して成功を確認する
-      - `lint` または `test` が未特定・未実行・失敗の場合は、`すべて問題なし` / `PRバッチ完了（残タスクありだが今回スコープ達成）` を選んではならない
-      - 最低限「プロジェクト標準の build コマンド」と対象テストの実行結果（コマンド・結果・失敗時の対応方針）を `supervisor-validation.md` に記録する（例: Go は `go build ./...`, Node は `npm run build`）
-      - `build` は該当する場合に実行し、失敗時は完了判定に進まない
-
-      **完了ゲート（追加・必須）**
-      - Critical / High の未解消指摘が 0 件であること
-      - Warning は許容理由が明記されたもの以外を 0 件であること
-
-      **要件トレーサビリティ（追加・必須）**
-      - 指示書/Specの全要件について、実装箇所（ファイル:行）とテストケース（ファイル:テスト名）の1:1対応を確認する
-      - 紐付け漏れが1件でもある場合は完了判定に進まない
-
-      **OpenAPI契約整合（追加・必須）**
-      - OpenAPI定義と実装挙動の差分（成功/失敗ステータス、レスポンス型）を確認する
-      - 差分が1件でもある場合は完了判定に進まない
-
-      **再レビュー（追加・必須）**
-      - 修正後に前回指摘の解消状況チェックリスト（解消/未解消/許容）を確認する
-      - 未解消指摘が1件でもある場合は完了判定に進まない
-
-      **判定ルール（追加）**
-      - 実装品質・テスト・ビルド観点で今回バッチに重大な問題がない（`lint` / `test` 成功を含む）
-      - `00-plan.md` の PRバッチ進捗で現在バッチが完了扱いにできる
-      - tasks.md に未完了タスクが残っていても、別PRバッチ/将来バッチとして分離されている
-
-      上記を満たす場合は condition: `PRバッチ完了（残タスクありだが今回スコープ達成）` を選択してください。
-    instruction: supervise
+    instruction: supervise-pr-batch
     output_contracts:
       report:
         - name: supervisor-validation.md

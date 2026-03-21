@@ -1,5 +1,5 @@
 name: opsx-full
-description: OpenSpec フルワークフロー - 提案、実装、アーカイブを一括実行
+description: OpenSpec 補助ワークフロー - change 提案、実装、アーカイブを一括実行する。feature spec 中心の通常開発では sdd 系を優先する
 piece_config:
   provider_options:
     codex:
@@ -31,14 +31,16 @@ movements:
   - name: propose
     edit: true
     persona: opsx-proposer
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: propose
     output_contracts:
@@ -59,15 +61,17 @@ movements:
     edit: true
     persona: opsx-implementer
     session: refresh
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Edit
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Edit
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: apply
     output_contracts:
@@ -88,12 +92,14 @@ movements:
     edit: true
     persona: opsx-archiver
     session: refresh
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
     required_permission_mode: edit
     instruction: archive
     output_contracts:

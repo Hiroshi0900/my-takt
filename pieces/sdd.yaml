@@ -53,7 +53,7 @@ loop_monitors:
     threshold: 5
     judge:
       persona: supervisor
-      instruction_template: |
+      instruction: |
         plan と implement のバッチループが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
@@ -75,7 +75,7 @@ loop_monitors:
     threshold: 3
     judge:
       persona: supervisor
-      instruction_template: |
+      instruction: |
         ai_review と ai_fix のループが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
@@ -96,7 +96,7 @@ loop_monitors:
     threshold: 3
     judge:
       persona: supervisor
-      instruction_template: |
+      instruction: |
         レビュー・修正サイクルが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
@@ -119,14 +119,16 @@ movements:
     edit: true
     persona: requirements-analyst
     policy: ears-format
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: generate-requirements
     output_contracts:
@@ -151,14 +153,16 @@ movements:
     persona: planner
     policy: sdd-gap-analysis
     knowledge: architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: validate-gap
     output_contracts:
@@ -179,14 +183,16 @@ movements:
     knowledge:
       - architecture
       - design-discovery
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: generate-design
     output_contracts:
@@ -207,10 +213,12 @@ movements:
     persona: architecture-reviewer
     policy: sdd-design-review
     knowledge: architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
     instruction: validate-design
     output_contracts:
       report:
@@ -230,12 +238,14 @@ movements:
       - sdd-tasks
       - pr-batch-size
     knowledge: architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
     required_permission_mode: edit
     instruction: generate-tasks
     output_contracts:
@@ -252,11 +262,13 @@ movements:
   - name: check-branch-freshness
     edit: false
     persona: planner
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
     instruction: check-branch-freshness
     output_contracts:
       report:
@@ -277,13 +289,15 @@ movements:
     persona: planner
     policy: pr-batch-size
     knowledge: architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+          - WebSearch
+          - WebFetch
     instruction: plan
     output_contracts:
       report:
@@ -319,15 +333,17 @@ movements:
     knowledge:
       - backend
       - architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: implement
     output_contracts:
@@ -350,12 +366,14 @@ movements:
     policy:
       - review
       - ai-antipattern
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - WebSearch
+          - WebFetch
     instruction: ai-review
     output_contracts:
       report:
@@ -377,15 +395,17 @@ movements:
     knowledge:
       - backend
       - architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     pass_previous_response: false
     instruction: ai-fix
@@ -401,10 +421,12 @@ movements:
     edit: false
     persona: architecture-reviewer
     policy: review
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
     instruction: arbitrate
     rules:
       - condition: ai_reviewの指摘が妥当（修正すべき）
@@ -422,12 +444,14 @@ movements:
         knowledge:
           - architecture
           - backend
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - WebSearch
-          - WebFetch
+        provider_options:
+          claude:
+            allowed_tools:
+              - Read
+              - Glob
+              - Grep
+              - WebSearch
+              - WebFetch
         instruction: review-arch
         output_contracts:
           report:
@@ -443,12 +467,14 @@ movements:
         policy:
           - review
           - qa
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - WebSearch
-          - WebFetch
+        provider_options:
+          claude:
+            allowed_tools:
+              - Read
+              - Glob
+              - Grep
+              - WebSearch
+              - WebFetch
         instruction: review-qa
         output_contracts:
           report:
@@ -462,11 +488,13 @@ movements:
         edit: false
         persona: supervisor
         policy: review
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Bash
+        provider_options:
+          claude:
+            allowed_tools:
+              - Read
+              - Glob
+              - Grep
+              - Bash
         instruction: validate-impl
         output_contracts:
           report:
@@ -492,15 +520,17 @@ movements:
     knowledge:
       - backend
       - architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     pass_previous_response: false
     instruction: fix
@@ -515,15 +545,17 @@ movements:
     edit: false
     persona: supervisor
     policy: review
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+          - WebSearch
+          - WebFetch
     pass_previous_response: false
-    instruction_template: |
+    instruction: |
       ## 監督フェーズ（PRバッチ完了対応）
       今回は全タスク完了だけでなく、「現在のPRバッチが完了しており、残タスクは次回セッションへ回してよい」場合も完了可能です。
 
@@ -556,7 +588,6 @@ movements:
       - tasks.md に未完了タスクが残っていても、別PRバッチ/将来バッチとして分離されている
 
       上記を満たす場合は condition: `PRバッチ完了（残タスクありだが今回スコープ達成）` を選択してください。
-    instruction: supervise
     output_contracts:
       report:
         - name: supervisor-validation.md

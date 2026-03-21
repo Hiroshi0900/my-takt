@@ -1,5 +1,5 @@
 name: opsx-apply
-description: OpenSpec Apply - バッチ実装とレビューによる変更タスクの実装
+description: OpenSpec 補助フェーズ - 変更タスクを実装する。feature spec 中心の通常実装では sdd-impl を優先する
 piece_config:
   provider_options:
     codex:
@@ -12,7 +12,9 @@ initial_movement: plan
 # --- カスタムファセット セクションマップ ---
 instructions:
   plan: ../instructions/opsx-apply-plan.md
-  implement: ../instructions/opsx-apply-execute.md
+  implement: ../instructions/shared-implement-execute.md
+  lint-gate: ../instructions/shared-lint-gate.md
+  supervise-generic: ../instructions/shared-supervise-generic.md
 
 report_formats:
   opsx-apply-summary: ../output-contracts/opsx-apply-summary.md
@@ -25,7 +27,7 @@ loop_monitors:
     threshold: 5
     judge:
       persona: supervisor
-      instruction_template: |
+      instruction: |
         plan と implement のバッチループが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
@@ -47,7 +49,7 @@ loop_monitors:
     threshold: 3
     judge:
       persona: supervisor
-      instruction_template: |
+      instruction: |
         ai_review と ai_fix のループが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
@@ -69,13 +71,15 @@ movements:
     edit: false
     persona: planner
     knowledge: architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+          - WebSearch
+          - WebFetch
     instruction: plan
     output_contracts:
       report:
@@ -109,15 +113,17 @@ movements:
     knowledge:
       - backend
       - architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: implement
     output_contracts:
@@ -141,12 +147,14 @@ movements:
     policy:
       - review
       - ai-antipattern
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - WebSearch
+          - WebFetch
     instruction: ai-review
     output_contracts:
       report:
@@ -169,15 +177,17 @@ movements:
     knowledge:
       - backend
       - architecture
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     pass_previous_response: false
     instruction: ai-fix
@@ -194,23 +204,14 @@ movements:
     edit: false
     persona: supervisor
     policy: review
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
-    instruction_template: |
-      PR前の実行品質ゲートを検証せよ。
-
-      **必須チェック**
-      - `lint` コマンドを特定し、実行して成功を確認する
-      - `test` コマンドを特定し、実行して成功を確認する
-      - プロジェクト標準の `build` コマンドを実行し、成功を確認する
-      - 各コマンドの実行コマンド、終了コード、失敗要点を `supervisor-validation.md` に記録する
-
-      **判定**
-      - いずれか未特定・未実行・失敗なら `品質ゲート不合格（lint/test/build）`
-      - すべて成功なら `品質ゲート合格（lint/test/build）`
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+    instruction: lint-gate
     rules:
       - condition: 品質ゲート合格（lint/test/build）
         next: supervise
@@ -222,38 +223,17 @@ movements:
     edit: false
     persona: supervisor
     policy: review
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+          - WebSearch
+          - WebFetch
     pass_previous_response: false
-    instruction_template: |
-      ## 監督フェーズ（完了ゲート強化）
-
-      **実行ベース品質ゲート（必須）**
-      - `lint` / `test` を特定し、両方を実行して成功を確認する
-      - 最低限「プロジェクト標準の build コマンド」と対象テストの実行結果（コマンド・結果・失敗時の対応方針）を `supervisor-validation.md` に記録する（例: Go は `go build ./...`, Node は `npm run build`）
-      - `lint` / `test` 未特定・未実行・失敗、および build失敗は完了判定不可
-
-      **完了ゲート（必須）**
-      - Critical / High 未解消指摘が 0 件
-      - Warning は許容理由が明記されたもの以外 0 件
-
-      **要件トレーサビリティ（必須）**
-      - 指示書/Specの要件ごとに、実装箇所（ファイル:行）とテストケース（ファイル:テスト名）を1:1で紐付ける
-      - 紐付け漏れがある場合は完了判定不可
-
-      **OpenAPI契約整合（必須）**
-      - OpenAPI定義との整合（成功/失敗ステータス、レスポンス型）を確認する
-      - 差分が残る場合は完了判定不可
-
-      **再レビュー（必須）**
-      - 前回指摘の解消状況をチェックリストで確認する（解消/未解消/許容）
-      - 未解消が残る場合は完了判定不可
-    instruction: supervise
+    instruction: supervise-generic
     output_contracts:
       report:
         - name: supervisor-validation.md

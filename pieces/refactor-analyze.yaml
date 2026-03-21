@@ -1,0 +1,75 @@
+name: refactor-analyze
+description: リファクタリング着手前に既存コードの構造問題を分析し、refactor-packages / refactor-domain / refactor-safe の適合性を判定する
+piece_config:
+  provider_options:
+    codex:
+      network_access: false
+    opencode:
+      network_access: false
+max_movements: 8
+initial_movement: investigate-structure
+
+personas:
+  refactor-analyst: ../personas/refactor-analyst.md
+
+instructions:
+  investigate-structure: ../instructions/refactor-investigate-structure.md
+  classify-refactor: ../instructions/refactor-classify.md
+
+report_formats:
+  refactor-analysis: ../output-contracts/refactor-analysis.md
+
+movements:
+  - name: investigate-structure
+    edit: false
+    persona: refactor-analyst
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+    instruction: investigate-structure
+    output_contracts:
+      report:
+        - name: refactor-analysis.md
+          format: refactor-analysis
+    rules:
+      - condition: 構造問題の証拠が揃った
+        next: classify-refactor
+      - condition: 追加調査が必要
+        next: investigate-structure
+      - condition: 対象不明または証拠不足
+        next: ABORT
+        appendix: |
+          追加で必要な情報:
+          - {不足情報1}
+          - {不足情報2}
+
+  - name: classify-refactor
+    edit: true
+    persona: refactor-analyst
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+    required_permission_mode: edit
+    pass_previous_response: false
+    instruction: classify-refactor
+    output_contracts:
+      report:
+        - name: refactor-analysis.md
+          format: refactor-analysis
+    rules:
+      - condition: 推奨ピースと実行条件を確定
+        next: COMPLETE
+      - condition: 有効な結論なし
+        next: ABORT
+        appendix: |
+          結論を出せなかった理由:
+          - {reason}

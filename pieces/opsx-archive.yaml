@@ -1,5 +1,5 @@
 name: opsx-archive
-description: OpenSpec Archive - 完了した変更をアーカイブ
+description: OpenSpec 補助フェーズ - 完了した変更をアーカイブする。change 完了の記録が必要な場合のみ使う
 piece_config:
   provider_options:
     codex:
@@ -22,12 +22,14 @@ movements:
   - name: archive
     edit: true
     persona: opsx-archiver
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
     required_permission_mode: edit
     instruction: archive
     output_contracts:

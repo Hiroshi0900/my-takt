@@ -1,0 +1,182 @@
+name: refactor-safe
+description: 大きなリファクタリングを小さく安全なバッチへ分割して進める。影響範囲が広い変更や段階移行が必要なケースに向く
+piece_config:
+  provider_options:
+    codex:
+      network_access: false
+    opencode:
+      network_access: false
+max_movements: 28
+initial_movement: investigate-structure
+
+personas:
+  refactor-analyst: ../personas/refactor-analyst.md
+  refactor-implementer: ../personas/refactor-implementer.md
+  refactor-reviewer: ../personas/refactor-reviewer.md
+
+instructions:
+  investigate-structure: ../instructions/refactor-investigate-structure.md
+  design-migration: ../instructions/refactor-safe-plan.md
+  implement-batch: ../instructions/refactor-safe-implement.md
+  review-refactor: ../instructions/refactor-review.md
+
+report_formats:
+  refactor-analysis: ../output-contracts/refactor-analysis.md
+  refactor-plan: ../output-contracts/refactor-plan.md
+  refactor-review: ../output-contracts/refactor-review.md
+
+loop_monitors:
+  - cycle:
+      - implement-batch
+      - review-refactor
+    threshold: 5
+    judge:
+      persona: supervisor
+      instruction: |
+        implement-batch と review-refactor のループが {cycle_count} 回繰り返されました。
+
+        **参照するレポート:**
+        - 移行計画: {report:refactor-plan.md}
+        - レビュー結果: {report:refactor-review.md}
+
+        **判断基準:**
+        - 各バッチが独立して完了しているか
+        - 互換戦略が機能しているか
+      rules:
+        - condition: 健全（進捗あり）
+          next: review-refactor
+        - condition: 非生産的（改善なし）
+          next: ABORT
+
+movements:
+  - name: investigate-structure
+    edit: false
+    persona: refactor-analyst
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+    instruction: investigate-structure
+    output_contracts:
+      report:
+        - name: refactor-analysis.md
+          format: refactor-analysis
+    rules:
+      - condition: 段階移行が必要な証拠が揃った
+        next: design-migration
+      - condition: 追加調査が必要
+        next: investigate-structure
+      - condition: 対象不明または証拠不足
+        next: ABORT
+        appendix: |
+          追加で必要な情報:
+          - {不足情報1}
+          - {不足情報2}
+
+  - name: design-migration
+    edit: true
+    persona: refactor-analyst
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+    required_permission_mode: edit
+    instruction: design-migration
+    output_contracts:
+      report:
+        - name: refactor-plan.md
+          format: refactor-plan
+    rules:
+      - condition: 安全な段階移行計画を確定
+        next: implement-batch
+      - condition: 追加調査が必要
+        next: investigate-structure
+      - condition: 実装非推奨
+        next: ABORT
+        appendix: |
+          実装前提が不足しています:
+          - {reason}
+
+  - name: implement-batch
+    edit: true
+    persona: refactor-implementer
+    session: refresh
+    policy:
+      - coding
+      - testing
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
+    required_permission_mode: edit
+    instruction: implement-batch
+    rules:
+      - condition: 今回バッチの実装と検証が完了
+        next: review-refactor
+      - condition: 計画の見直しが必要
+        next: design-migration
+      - condition: 判断できない、情報不足
+        next: design-migration
+
+  - name: review-refactor
+    edit: false
+    persona: refactor-reviewer
+    policy: review
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+    instruction: review-refactor
+    output_contracts:
+      report:
+        - name: refactor-review.md
+          format: refactor-review
+    rules:
+      - condition: 承認、次バッチ不要
+        next: COMPLETE
+      - condition: 承認、次バッチあり
+        next: implement-batch
+      - condition: 要修正
+        next: fix-issues
+      - condition: 要再設計
+        next: design-migration
+
+  - name: fix-issues
+    edit: true
+    persona: refactor-implementer
+    session: refresh
+    policy:
+      - coding
+      - testing
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
+    required_permission_mode: edit
+    pass_previous_response: false
+    instruction: implement-batch
+    rules:
+      - condition: 修正完了
+        next: review-refactor
+      - condition: 計画の見直しが必要
+        next: design-migration

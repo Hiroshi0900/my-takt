@@ -1,5 +1,5 @@
 name: opsx-retro
-description: OpenSpec Retro - PR/CI/レビューの失敗を振り返り、承認前提の再発防止ルール提案を作成する
+description: OpenSpec 補助ワークフロー - PR/CI/レビュー失敗を振り返り、再発防止ルール提案を作成する
 piece_config:
   provider_options:
     codex:
@@ -27,14 +27,16 @@ movements:
   - name: capture
     edit: true
     persona: opsx-explorer
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: capture
     output_contracts:
@@ -54,14 +56,16 @@ movements:
   - name: analyze
     edit: true
     persona: opsx-explorer
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: analyze
     output_contracts:
@@ -82,14 +86,16 @@ movements:
   - name: propose
     edit: true
     persona: opsx-proposer
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: propose
     output_contracts:

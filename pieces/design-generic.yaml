@@ -43,7 +43,7 @@ loop_monitors:
     threshold: 2
     judge:
       persona: guardian
-      instruction_template: |
+      instruction: |
         design-domain と review-domain のループが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
@@ -65,7 +65,7 @@ loop_monitors:
     threshold: 3
     judge:
       persona: guardian
-      instruction_template: |
+      instruction: |
         guard-review と fix-issues のループが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
@@ -82,11 +82,13 @@ movements:
     persona: investigator
     policy: go-clean-architecture
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
     instruction: investigate
     output_contracts:
       report:
@@ -105,10 +107,12 @@ movements:
       - go-ddd-patterns
       - go-clean-architecture
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
     instruction: design-domain
     output_contracts:
       report:
@@ -127,10 +131,12 @@ movements:
       - go-ddd-patterns
       - go-clean-architecture
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
     instruction: review-guard
     output_contracts:
       report:
@@ -149,10 +155,12 @@ movements:
       - go-clean-architecture
       - go-ddd-patterns
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
     instruction: design-domain
     output_contracts:
       report:
@@ -171,13 +179,15 @@ movements:
       - go-clean-architecture
       - go-ddd-patterns
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
     required_permission_mode: edit
     instruction: implement
     rules:
@@ -191,13 +201,15 @@ movements:
     persona: implementer
     policy: go-testing
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
     required_permission_mode: edit
     instruction: generate-tests
     rules:
@@ -214,11 +226,13 @@ movements:
       - go-ddd-patterns
       - go-testing
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
     instruction: review-guard-final
     output_contracts:
       report:
@@ -238,13 +252,15 @@ movements:
       - go-ddd-patterns
       - go-testing
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
     required_permission_mode: edit
     pass_previous_response: false
     instruction: implement

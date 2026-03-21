@@ -30,11 +30,13 @@ movements:
     edit: false
     persona: steering-analyst
     policy: docs-work-only
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
     instruction: investigate-specs
     output_contracts:
       report:
@@ -53,11 +55,13 @@ movements:
     edit: false
     persona: planner
     policy: docs-work-only
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
     instruction: define-classification
     output_contracts:
       report:
@@ -77,13 +81,15 @@ movements:
     edit: true
     persona: steering-analyst
     policy: docs-work-only
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
     required_permission_mode: edit
     instruction: draft-coverage-map
     rules:
@@ -99,11 +105,13 @@ movements:
     edit: false
     persona: supervisor
     policy: docs-work-only
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
     instruction: review-map
     output_contracts:
       report:
@@ -124,13 +132,15 @@ movements:
     edit: true
     persona: steering-analyst
     policy: docs-work-only
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
     required_permission_mode: edit
     pass_previous_response: false
     instruction: finalize-map

@@ -61,10 +61,22 @@ func (u *xxxImpl) Execute(ctx context.Context, input usecase.XxxInput) (*usecase
 
 - composition root に `Provide` / `Bind` / `wire` 設定を追加する
 
-## 実装後チェック
+## 実装後チェック（必須実行）
+
+以下を順番に実行し、すべて成功してから完了とする。
+
+### lintゲート（必須）
+
+プロジェクトのlintコマンドを以下の優先順で特定して実行する:
+- Go: `Makefile` に `lint` ターゲットがあれば `make lint`、なければ `golangci-lint run ./...`
+- Node.js / Next.js / Expo: `package.json` の `scripts.lint` があれば `npm run lint`（または yarn/pnpm）
+- 上記に該当しない場合: `go vet ./...` または `tsc --noEmit` を代替として実行
+
+lintが失敗した場合はエラーを修正してから再実行する。コマンドが見つからない場合はスキップ可（理由を記録する）。
+
+### その他チェック
 
 ```
-[ ] lint が通る（プロジェクト標準コマンド。例: make lint / npm run lint）
 [ ] build が通る（例: go build ./...）
 [ ] domain層に禁止importがない
 [ ] 新規公開型に対応するテストがある

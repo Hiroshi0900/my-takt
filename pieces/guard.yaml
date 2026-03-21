@@ -38,10 +38,12 @@ movements:
     persona: guardian
     policy: go-clean-architecture
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
     instruction: review-guard
     output_contracts:
       report:
@@ -57,10 +59,12 @@ movements:
     persona: guardian
     policy: go-ddd-patterns
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
     instruction: review-guard
     output_contracts:
       report:
@@ -78,10 +82,12 @@ movements:
       - go-clean-architecture
       - go-ddd-patterns
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
     instruction: review-guard
     output_contracts:
       report:
@@ -97,11 +103,13 @@ movements:
     persona: guardian
     policy: go-testing
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
     instruction: review-guard-final
     output_contracts:
       report:
@@ -122,13 +130,15 @@ movements:
       - go-ddd-patterns
       - go-testing
     knowledge: go-project-structure
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Edit
-      - Write
-      - Bash
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
     required_permission_mode: edit
     pass_previous_response: false
     instruction: implement

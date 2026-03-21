@@ -1,5 +1,5 @@
 name: opsx-propose
-description: OpenSpec Propose - 変更を作成し全アーティファクトを生成
+description: OpenSpec 補助フェーズ - change を作成しアーティファクトを生成する。change lifecycle を保持したい場合のみ使う
 piece_config:
   provider_options:
     codex:
@@ -22,14 +22,16 @@ movements:
   - name: propose
     edit: true
     persona: opsx-proposer
-    allowed_tools:
-      - Read
-      - Glob
-      - Grep
-      - Write
-      - Bash
-      - WebSearch
-      - WebFetch
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
     required_permission_mode: edit
     instruction: propose
     output_contracts:
