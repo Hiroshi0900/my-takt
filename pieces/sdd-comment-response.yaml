@@ -1,0 +1,158 @@
+name: sdd-comment-response
+description: PRコメント対応 - レビューコメントのトリアージ→修正→検証→返信→pushを自動遷移で実行する
+piece_config:
+  provider_options:
+    codex:
+      network_access: true
+    opencode:
+      network_access: true
+max_movements: 20
+initial_movement: triage-comments
+
+# --- カスタムファセット セクションマップ ---
+instructions:
+  triage-comments: ../instructions/triage-pr-comments.md
+  fix-comments: ../instructions/fix-pr-comments.md
+  verify-fixes: ../instructions/verify-comment-fixes.md
+  respond-comments: ../instructions/respond-pr-comments.md
+  push-and-update: ../instructions/push-comment-fixes.md
+
+report_formats:
+  comment-triage: ../output-contracts/comment-triage.md
+
+# --- ループ監視 ---
+loop_monitors:
+  - cycle:
+      - fix-comments
+      - verify-fixes
+    threshold: 3
+    judge:
+      persona: supervisor
+      instruction: |
+        fix-comments と verify-fixes のループが {cycle_count} 回繰り返されました。
+
+        **参照するレポート:**
+        - コメントトリアージ: {report:comment-triage.md}
+
+        **判断基準:**
+        - 各サイクルで新しい修正が成功しているか
+        - 同じテスト失敗が繰り返されていないか
+      rules:
+        - condition: 健全（進捗あり）
+          next: fix-comments
+        - condition: 非生産的（改善なし）
+          next: respond-comments
+
+# --- Movement定義 ---
+movements:
+  # ===== トリアージ =====
+  - name: triage-comments
+    edit: false
+    persona: architecture-reviewer
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+    instruction: triage-comments
+    output_contracts:
+      report:
+        - name: comment-triage.md
+          format: comment-triage
+    rules:
+      - condition: 対応必須コメントあり
+        next: fix-comments
+      - condition: 対応必須なし（任意のみ）
+        next: respond-comments
+      - condition: コメントなし
+        next: COMPLETE
+
+  # ===== コード修正 =====
+  - name: fix-comments
+    edit: true
+    persona: coder
+    policy:
+      - coding
+      - testing
+    session: refresh
+    knowledge:
+      - backend
+      - architecture
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Edit
+          - Write
+          - Bash
+    required_permission_mode: edit
+    instruction: fix-comments
+    rules:
+      - condition: 修正完了
+        next: verify-fixes
+      - condition: 修正不可（確認必要）
+        next: ABORT
+        appendix: |
+          以下のコメントは自動修正できません。手動対応が必要です:
+          - {コメント詳細}
+
+  # ===== 修正検証 =====
+  - name: verify-fixes
+    edit: false
+    persona: qa-reviewer
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+    instruction: verify-fixes
+    rules:
+      - condition: 検証合格
+        next: respond-comments
+      - condition: 検証不合格
+        next: fix-comments
+
+  # ===== コメント返信 =====
+  - name: respond-comments
+    edit: false
+    persona: supervisor
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Bash
+    instruction: respond-comments
+    rules:
+      - condition: 全コメント返信完了
+        next: push-and-update
+      - condition: 返信失敗
+        next: ABORT
+        appendix: |
+          コメント返信に失敗しました。
+          - {エラー詳細}
+
+  # ===== Push =====
+  - name: push-and-update
+    edit: true
+    persona: supervisor
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Bash
+    required_permission_mode: edit
+    instruction: push-and-update
+    rules:
+      - condition: push成功
+        next: COMPLETE
+      - condition: push失敗
+        next: ABORT
+        appendix: |
+          git pushに失敗しました。
+          - {エラー詳細}

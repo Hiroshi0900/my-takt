@@ -1,6 +1,19 @@
 provider: claude
 model: sonnet
 language: ja
+auto_pr: false
+
+pipeline:
+  default_branch_prefix: "takt/"
+  commit_message_template: "feat: {title} (#{issue})"
+  pr_body_template: |
+    ## Summary
+    {issue_body}
+
+    ## Report
+    {report}
+
+    Closes #{issue}
 
 persona_providers:
   # codex（reasoning effort は ~/.codex/config.toml で制御）
@@ -16,19 +29,14 @@ persona_providers:
   ddd-designer:
     provider: codex
     model: gpt-5.4
-
   security-reviewer:
     provider: codex
     model: gpt-5.4
-  coder:
-    provider: codex
-    model: gpt-5.4
-  guardian:
-    provider: codex
-    model: gpt-5.4
-  implementer:
-    provider: codex
-    model: gpt-5.4
+
+  # 実装・レビュー系は claude（codex レートリミット対策）
+  coder: claude
+  guardian: claude
+  implementer: claude
 
   # 進行管理・統合判定・周辺運用は claude
   supervisor: claude
