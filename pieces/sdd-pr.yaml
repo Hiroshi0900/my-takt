@@ -1,0 +1,101 @@
+name: sdd-pr
+description: SDD Phase 9 - 実装済みブランチから PR を作成し summary を投稿する
+piece_config:
+  provider_options:
+    codex:
+      network_access: true
+    opencode:
+      network_access: true
+max_movements: 6
+initial_movement: prepare-pr
+
+# --- カスタムファセット セクションマップ ---
+instructions:
+  prepare-pr: ../instructions/prepare-pr.md
+  create-pr-movement: ../instructions/create-pr-movement.md
+  post-pr-summary: ../instructions/post-pr-summary.md
+
+report_formats:
+  pr-preparation: ../output-contracts/pr-preparation.md
+  pr-created: ../output-contracts/pr-created.md
+
+# --- Movement定義 ---
+movements:
+  - name: prepare-pr
+    edit: true
+    persona: architecture-reviewer
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+          - Write
+    required_permission_mode: edit
+    instruction: prepare-pr
+    output_contracts:
+      report:
+        - name: 08-pr-preparation.md
+          format: pr-preparation
+    rules:
+      - condition: 準備完了（問題なし or 軽微な指摘のみ）
+        next: create-pr
+      - condition: 重大な問題あり（機密情報漏洩、テスト未実行等）
+        next: ABORT
+        appendix: |
+          PR準備で重大な問題を検出しました。
+          実装に戻って修正してください。
+      - condition: 準備不可（ブランチ問題等）
+        next: ABORT
+        appendix: |
+          PR準備に失敗しました。
+          - {エラー詳細}
+      - condition: ai("上記いずれにも該当しない")
+        next: ABORT
+
+  - name: create-pr
+    edit: true
+    persona: supervisor
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Bash
+    required_permission_mode: edit
+    instruction: create-pr-movement
+    output_contracts:
+      report:
+        - name: 09-pr-created.md
+          format: pr-created
+    rules:
+      - condition: PR作成成功
+        next: post-pr-summary
+      - condition: PR既存（force push + 更新済み）
+        next: post-pr-summary
+      - condition: PR作成失敗
+        next: ABORT
+        appendix: |
+          PR作成に失敗しました。
+          - {エラー詳細}
+      - condition: ai("上記いずれにも該当しない")
+        next: post-pr-summary
+
+  - name: post-pr-summary
+    edit: false
+    persona: architecture-reviewer
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Bash
+    instruction: post-pr-summary
+    rules:
+      - condition: 完了
+        next: COMPLETE
+      - condition: コメントなし
+        next: COMPLETE
+      - condition: 投稿失敗
+        next: COMPLETE
+      - condition: ai("上記いずれにも該当しない")
+        next: COMPLETE

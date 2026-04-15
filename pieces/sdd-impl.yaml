@@ -1,12 +1,12 @@
 name: sdd-impl
-description: SDD Phase 4 - タスクに基づく適応型バッチ実装を実行する
+description: SDD Phase 4 - superpowers計画からTDDバッチ実装を実行する
 piece_config:
   provider_options:
     codex:
       network_access: true
     opencode:
       network_access: true
-max_movements: 50
+max_movements: 15
 initial_movement: check-branch-freshness
 
 # --- カスタムファセット セクションマップ ---
@@ -15,56 +15,67 @@ policies:
 
 instructions:
   check-branch-freshness: ../instructions/check-branch-freshness.md
-  plan: ../instructions/impl-plan.md
-  implement: ../instructions/shared-implement-execute.md
+  load-plan: ../instructions/load-plan.md
+  implement: ../instructions/sp-implement-tdd.md
+  verify: ../instructions/sp-verify.md
+  review-arch: ../instructions/review-arch.md
+  review-security: ../instructions/review-security.md
+  review-qa: ../instructions/review-qa.md
+  fix: ../instructions/sp-debug.md
   lint-gate: ../instructions/shared-lint-gate.md
   supervise-pr-batch: ../instructions/shared-supervise-pr-batch.md
 
 report_formats:
   branch-freshness-check: ../output-contracts/branch-freshness-check.md
+  sp-implementation-status: ../output-contracts/sp-implementation-status.md
+  sp-verification-result: ../output-contracts/sp-verification-result.md
+  sp-debug-result: ../output-contracts/sp-debug-result.md
 
 # --- ループ監視 ---
 loop_monitors:
   - cycle:
-      - plan
       - implement
-    threshold: 5
-    judge:
-      persona: supervisor
-      instruction: |
-        plan と implement のバッチループが {cycle_count} 回繰り返されました。
-
-        **参照するレポート:**
-        - バッチ計画: {report:00-plan.md}
-        - 実装スコープ: {report:coder-scope.md}
-
-        **判断基準:**
-        - 各サイクルで新しいタスクが完了しているか
-        - tasks.md のチェック数が増えているか
-      rules:
-        - condition: 健全（進捗あり）
-          next: plan
-        - condition: 非生産的（改善なし）
-          next: ai_review
-
-  - cycle:
-      - ai_review
-      - ai_fix
+      - verify
     threshold: 3
     judge:
       persona: supervisor
       instruction: |
-        ai_review と ai_fix のループが {cycle_count} 回繰り返されました。
+        implement と verify のループが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
-        - AIレビュー結果: {report:04-ai-review.md}
+        - 実装状況: {report:implementation-status.md}
+        - 検証結果: {report:verification-result.md}
 
         **判断基準:**
-        - 各サイクルで新しい問題が発見・修正されているか
-        - 同じ指摘が繰り返されていないか
+        - 各サイクルで未完了タスクが減っているか
+        - 検証失敗の原因が変化しているか（同じエラーの繰り返しは非生産的）
       rules:
         - condition: 健全（進捗あり）
-          next: ai_review
+          next: implement
+        - condition: 非生産的（改善なし）
+          next: supervise
+
+  - cycle:
+      - reviewers
+      - fix
+    threshold: 3
+    judge:
+      persona: supervisor
+      instruction: |
+        レビュー・修正サイクルが {cycle_count} 回繰り返されました。
+
+        **参照するレポート:**
+        - アーキテクチャレビュー: {report:05-architect-review.md}
+        - セキュリティレビュー: {report:05b-security-review.md}
+        - QAレビュー: {report:06-qa-review.md}
+        - デバッグ結果: {report:debug-result.md}
+
+        **判断基準:**
+        - 同じ指摘が繰り返されていないか
+        - systematic-debugging が escalate タグを出したか
+      rules:
+        - condition: 健全（進捗あり）
+          next: reviewers
         - condition: 非生産的（改善なし）
           next: supervise
 
@@ -88,18 +99,18 @@ movements:
           format: branch-freshness-check
     rules:
       - condition: 同期不要（継続推奨）
-        next: plan
+        next: load-plan
       - condition: 同期推奨（継続可）
-        next: plan
+        next: load-plan
       - condition: 確認不可（継続可）
-        next: plan
+        next: load-plan
+      - condition: ai("上記いずれにも該当しない")
+        next: load-plan
 
-  # ===== スケジューラー: タスク流動を見てバッチ決定 =====
-  - name: plan
+  # ===== 計画ロード: superpowers plan ファイルを読み込み =====
+  - name: load-plan
     edit: false
     persona: planner
-    policy: pr-batch-size
-    knowledge: architecture
     provider_options:
       claude:
         allowed_tools:
@@ -107,33 +118,19 @@ movements:
           - Glob
           - Grep
           - Bash
-          - WebSearch
-          - WebFetch
-    instruction: plan
-    output_contracts:
-      report:
-        - name: 00-plan.md
-          format: plan
+    instruction: load-plan
     rules:
-      - condition: 未着手の逐次タスクあり
+      - condition: 計画有効
         next: implement
-      - condition: PRバッチ完了（残タスクあり、今回セッションを完了してよい）
-        next: ai_review
-      - condition: 全タスク完了
-        next: ai_review
-      - condition: tasks.mdが存在しない、または空
+      - condition: 計画不足・不備
         next: ABORT
         appendix: |
-          tasks.md が見つからないか空です。
-          sdd-tasks ピースを先に実行してください。
-      - condition: 要件が不明確、情報不足
+          docs/superpowers/plans/ 配下に有効な計画ファイルが見つかりません。
+          先に sdd ピース (brainstorm / write-plan フェーズ含む) を実行してください。
+      - condition: ai("上記いずれにも該当しない")
         next: ABORT
-        appendix: |
-          確認事項:
-          - {質問1}
-          - {質問2}
 
-  # ===== 逐次実装: バッチ内タスクのみ実装 =====
+  # ===== 実装: subagent-driven + TDD (1バッチ≤3ファイル/10分) =====
   - name: implement
     edit: true
     persona: coder
@@ -159,52 +156,138 @@ movements:
     instruction: implement
     output_contracts:
       report:
-        - name: coder-scope.md
-          format: coder-scope
-        - name: coder-decisions.md
-          format: coder-decisions
+        - name: implementation-status.md
+          format: sp-implementation-status
     rules:
-      - condition: バッチの実装完了
-        next: plan
-      - condition: 実装中に問題発生、計画の見直しが必要
-        next: plan
-      - condition: 判断できない、情報不足
-        next: plan
+      - condition: "IMPL: complete"
+        next: verify
+      - condition: "IMPL: partial"
+        next: implement
+      - condition: "IMPL: blocked"
+        next: supervise
+      - condition: ai("上記いずれにも該当しない")
+        next: supervise
 
-  # ===== AIレビュー =====
-  - name: ai_review
+  # ===== 検証: verification-before-completion =====
+  - name: verify
     edit: false
-    persona: ai-antipattern-reviewer
-    policy:
-      - review
-      - ai-antipattern
+    persona: supervisor
+    policy: review
     provider_options:
       claude:
         allowed_tools:
           - Read
           - Glob
           - Grep
-          - WebSearch
-          - WebFetch
-    instruction: ai-review
+          - Bash
+    instruction: verify
     output_contracts:
       report:
-        - name: 04-ai-review.md
-          format: ai-review
+        - name: verification-result.md
+          format: sp-verification-result
     rules:
-      - condition: AI特有の問題なし
-        next: lint-gate
-      - condition: AI特有の問題あり
-        next: ai_fix
+      - condition: "VERIFY: pass"
+        next: reviewers
+      - condition: "VERIFY: fail"
+        next: implement
+      - condition: ai("上記いずれにも該当しない")
+        next: supervise
 
-  # ===== AI問題修正 =====
-  - name: ai_fix
+  # ===== パラレルレビュー =====
+  - name: reviewers
+    parallel:
+      - name: arch-review
+        edit: false
+        persona: architecture-reviewer
+        policy: review
+        knowledge:
+          - architecture
+          - backend
+        provider_options:
+          claude:
+            allowed_tools:
+              - Read
+              - Glob
+              - Grep
+              - WebSearch
+              - WebFetch
+        instruction: review-arch
+        output_contracts:
+          report:
+            - name: 05-architect-review.md
+              format: architecture-review
+        rules:
+          - condition: approved
+          - condition: needs_fix
+          - condition: ai("上記いずれにも該当しない")
+
+      - name: security-review
+        edit: false
+        persona: security-reviewer
+        policy: review
+        knowledge:
+          - architecture
+          - backend
+          - security
+        provider_options:
+          claude:
+            allowed_tools:
+              - Read
+              - Glob
+              - Grep
+              - WebSearch
+              - WebFetch
+        instruction: review-security
+        output_contracts:
+          report:
+            - name: 05b-security-review.md
+              format: security-review
+        rules:
+          - condition: approved
+          - condition: needs_fix
+          - condition: ai("上記いずれにも該当しない")
+
+      - name: qa-review
+        edit: false
+        persona: qa-reviewer
+        policy:
+          - review
+          - qa
+        provider_options:
+          claude:
+            allowed_tools:
+              - Read
+              - Glob
+              - Grep
+              - WebSearch
+              - WebFetch
+        instruction: review-qa
+        output_contracts:
+          report:
+            - name: 06-qa-review.md
+              format: qa-review
+        rules:
+          - condition: approved
+          - condition: needs_fix
+          - condition: ai("上記いずれにも該当しない")
+
+    rules:
+      - condition: all("approved", "approved", "approved")
+        next: lint-gate
+      - condition: any("needs_fix")
+        next: fix
+      - condition: ai("上記いずれにも該当しない")
+        next: supervise
+
+  # ===== 修正: systematic-debugging (3回でエスカレート) =====
+  - name: fix
     edit: true
     persona: coder
     policy:
       - coding
       - testing
     session: refresh
+    pass_previous_response: true
     knowledge:
       - backend
       - architecture
@@ -220,17 +303,22 @@ movements:
           - WebSearch
           - WebFetch
     required_permission_mode: edit
-    pass_previous_response: false
-    instruction: ai-fix
+    instruction: fix
+    output_contracts:
+      report:
+        - name: debug-result.md
+          format: sp-debug-result
     rules:
-      - condition: AI問題の修正完了
-        next: ai_review
-      - condition: 修正不要（指摘対象ファイル/仕様の確認済み）
-        next: lint-gate
-      - condition: 判断できない、情報不足
-        next: lint-gate
+      - condition: "DEBUG: resolved"
+        next: reviewers
+      - condition: "DEBUG: investigating"
+        next: fix
+      - condition: "DEBUG: escalate"
+        next: supervise
+      - condition: ai("上記いずれにも該当しない")
+        next: supervise
 
-  # ===== PR前品質ゲート（必須） =====
+  # ===== PR前品質ゲート =====
   - name: lint-gate
     edit: false
     persona: supervisor
@@ -247,7 +335,9 @@ movements:
       - condition: 品質ゲート合格（lint/test/build）
         next: supervise
       - condition: 品質ゲート不合格（lint/test/build）
-        next: plan
+        next: implement
+      - condition: ai("上記いずれにも該当しない")
+        next: supervise
 
   # ===== 最終検証 =====
   - name: supervise
@@ -278,4 +368,6 @@ movements:
       - condition: PRバッチ完了（残タスクありだが今回スコープ達成）
         next: COMPLETE
       - condition: 要求未達成、lint未実行、lint失敗、テスト未実行、テスト失敗、ビルドエラー、Critical/High未解消、Warning理由不足、トレーサビリティ漏れ、OpenAPI差分未解消、再レビュー未解消
-        next: plan
+        next: implement
+      - condition: ai("上記いずれにも該当しない")
+        next: COMPLETE

@@ -1,94 +1,89 @@
 name: sdd
-description: Spec-Driven Development（フルオート）- 要件→設計→タスク→実装→検証を自動遷移で実行する
+description: Spec-Driven Development (superpowers基盤) - brainstorm→計画→TDD実装→検証→レビュー→PR
 piece_config:
   provider_options:
     codex:
       network_access: true
     opencode:
       network_access: true
-max_movements: 80
-initial_movement: generate-requirements
+max_movements: 30
+initial_movement: check-branch-freshness
 
 # --- カスタムファセット セクションマップ ---
-personas:
-  requirements-analyst: ../personas/requirements-analyst.md
-
 policies:
-  ears-format: ../policies/ears-format.md
-  sdd-design: ../policies/sdd-design.md
-  sdd-gap-analysis: ../policies/sdd-gap-analysis.md
-  sdd-design-review: ../policies/sdd-design-review.md
-  sdd-tasks: ../policies/sdd-tasks.md
   pr-batch-size: ../policies/pr-batch-size.md
 
 instructions:
-  generate-requirements: ../instructions/generate-requirements.md
-  validate-gap: ../instructions/validate-gap.md
-  generate-design: ../instructions/generate-design.md
-  validate-design: ../instructions/validate-design.md
-  generate-tasks: ../instructions/generate-tasks.md
   check-branch-freshness: ../instructions/check-branch-freshness.md
-  validate-impl: ../instructions/validate-impl.md
-  plan: ../instructions/impl-plan.md
-  implement: ../instructions/impl-execute.md
-
-knowledge:
-  design-discovery: ../knowledge/design-discovery.md
+  brainstorm: ../instructions/sp-brainstorm.md
+  write-plan: ../instructions/sp-write-plan.md
+  implement: ../instructions/sp-implement-tdd.md
+  verify: ../instructions/sp-verify.md
+  review-arch: ../instructions/review-arch.md
+  review-security: ../instructions/review-security.md
+  review-qa: ../instructions/review-qa.md
+  fix: ../instructions/sp-debug.md
+  lint-gate: ../instructions/shared-lint-gate.md
+  supervise-pr-batch: ../instructions/shared-supervise-pr-batch.md
+  prepare-pr: ../instructions/prepare-pr.md
+  create-pr-movement: ../instructions/create-pr-movement.md
+  post-pr-summary: ../instructions/post-pr-summary.md
 
 report_formats:
-  sdd-requirements: ../output-contracts/sdd-requirements.md
-  sdd-gap-analysis: ../output-contracts/sdd-gap-analysis.md
-  sdd-design: ../output-contracts/sdd-design.md
-  sdd-research: ../output-contracts/sdd-research.md
-  sdd-design-review: ../output-contracts/sdd-design-review.md
-  sdd-tasks: ../output-contracts/sdd-tasks.md
   branch-freshness-check: ../output-contracts/branch-freshness-check.md
-  sdd-impl-validation: ../output-contracts/sdd-impl-validation.md
+  sp-spec-created: ../output-contracts/sp-spec-created.md
+  sp-plan-created: ../output-contracts/sp-plan-created.md
+  sp-implementation-status: ../output-contracts/sp-implementation-status.md
+  sp-verification-result: ../output-contracts/sp-verification-result.md
+  sp-debug-result: ../output-contracts/sp-debug-result.md
+  pr-preparation: ../output-contracts/pr-preparation.md
+  pr-created: ../output-contracts/pr-created.md
 
 # --- ループ監視 ---
 loop_monitors:
   - cycle:
-      - plan
-      - implement
-    threshold: 5
+      - brainstorm
+      - write-plan
+    threshold: 2
     judge:
       persona: supervisor
       instruction: |
-        plan と implement のバッチループが {cycle_count} 回繰り返されました。
+        brainstorm と write-plan のループが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
-        - バッチ計画: {report:00-plan.md}
-        - 実装スコープ: {report:coder-scope.md}
+        - spec: {report:spec-created.md}
+        - plan: {report:plan-created.md}
 
         **判断基準:**
-        - 各サイクルで新しいタスクが完了しているか
-        - tasks.md のチェック数が増えているか
+        - spec/plan の内容が実際に修正されているか
+        - 同じ needs-revision が繰り返されていないか (曖昧要件のサイン)
       rules:
         - condition: 健全（進捗あり）
-          next: plan
+          next: brainstorm
         - condition: 非生産的（改善なし）
-          next: ai_review
+          next: ABORT
 
   - cycle:
-      - ai_review
-      - ai_fix
+      - implement
+      - verify
     threshold: 3
     judge:
       persona: supervisor
       instruction: |
-        ai_review と ai_fix のループが {cycle_count} 回繰り返されました。
+        implement と verify のループが {cycle_count} 回繰り返されました。
 
         **参照するレポート:**
-        - AIレビュー結果: {report:04-ai-review.md}
+        - 実装状況: {report:implementation-status.md}
+        - 検証結果: {report:verification-result.md}
 
         **判断基準:**
-        - 各サイクルで新しい問題が発見・修正されているか
-        - 同じ指摘が繰り返されていないか
+        - 未完了タスクが減っているか
+        - 検証失敗の原因が変化しているか
       rules:
         - condition: 健全（進捗あり）
-          next: ai_review
+          next: implement
         - condition: 非生産的（改善なし）
-          next: reviewers
+          next: supervise
 
   - cycle:
       - reviewers
@@ -101,164 +96,22 @@ loop_monitors:
 
         **参照するレポート:**
         - アーキテクチャレビュー: {report:05-architect-review.md}
+        - セキュリティレビュー: {report:05b-security-review.md}
         - QAレビュー: {report:06-qa-review.md}
+        - デバッグ結果: {report:debug-result.md}
 
         **判断基準:**
-        - 各サイクルで新しい問題が発見・修正されているか
         - 同じ指摘が繰り返されていないか
+        - systematic-debugging が escalate タグを出したか
       rules:
         - condition: 健全（進捗あり）
-          next: fix
+          next: reviewers
         - condition: 非生産的（改善なし）
           next: supervise
 
 # --- Movement定義 ---
 movements:
-  # ===== Phase 1: 要件生成 =====
-  - name: generate-requirements
-    edit: true
-    persona: requirements-analyst
-    policy: ears-format
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Write
-          - Bash
-          - WebSearch
-          - WebFetch
-    required_permission_mode: edit
-    instruction: generate-requirements
-    output_contracts:
-      report:
-        - name: requirements.md
-          format: sdd-requirements
-    rules:
-      - condition: 要件が明確で完全、かつ既存実装あり
-        next: validate-gap
-      - condition: 要件が明確で完全、かつ既存実装なし
-        next: generate-design
-      - condition: 情報不足、要件が不明確
-        next: ABORT
-        appendix: |
-          確認事項:
-          - {不明点1}
-          - {不明点2}
-
-  # ===== Phase 1.5: ギャップ分析 =====
-  - name: validate-gap
-    edit: true
-    persona: planner
-    policy: sdd-gap-analysis
-    knowledge: architecture
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Write
-          - Bash
-          - WebSearch
-          - WebFetch
-    required_permission_mode: edit
-    instruction: validate-gap
-    output_contracts:
-      report:
-        - name: gap-analysis.md
-          format: sdd-gap-analysis
-    rules:
-      - condition: 分析完了、推奨事項あり
-        next: generate-design
-      - condition: 要件が見つからない
-        next: ABORT
-
-  # ===== Phase 2: 設計生成 =====
-  - name: generate-design
-    edit: true
-    persona: planner
-    policy: sdd-design
-    knowledge:
-      - architecture
-      - design-discovery
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Write
-          - Bash
-          - WebSearch
-          - WebFetch
-    required_permission_mode: edit
-    instruction: generate-design
-    output_contracts:
-      report:
-        - name: design.md
-          format: sdd-design
-        - name: research.md
-          format: sdd-research
-    rules:
-      - condition: 設計完了、発見記録あり
-        next: validate-design
-      - condition: 要件が見つからない、設計不可
-        next: ABORT
-
-  # ===== Phase 2.5: 設計レビュー =====
-  - name: validate-design
-    edit: false
-    persona: architecture-reviewer
-    policy: sdd-design-review
-    knowledge: architecture
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-    instruction: validate-design
-    output_contracts:
-      report:
-        - name: design-review.md
-          format: sdd-design-review
-    rules:
-      - condition: GO（設計品質十分）
-        next: generate-tasks
-      - condition: NO-GO（重大な問題あり）
-        next: generate-design
-
-  # ===== Phase 3: タスク生成 =====
-  - name: generate-tasks
-    edit: true
-    persona: planner
-    policy:
-      - sdd-tasks
-      - pr-batch-size
-    knowledge: architecture
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Write
-          - Bash
-    required_permission_mode: edit
-    instruction: generate-tasks
-    output_contracts:
-      report:
-        - name: tasks.md
-          format: sdd-tasks
-    rules:
-      - condition: タスク分解完了、全要件カバー
-        next: check-branch-freshness
-      - condition: 要件または設計が見つからない
-        next: ABORT
-
-  # ===== Phase 3.5: 実装前のブランチ鮮度確認 =====
+  # ===== Phase 0: ブランチ鮮度確認 =====
   - name: check-branch-freshness
     edit: false
     persona: planner
@@ -276,53 +129,76 @@ movements:
           format: branch-freshness-check
     rules:
       - condition: 同期不要（継続推奨）
-        next: plan
+        next: brainstorm
       - condition: 同期推奨（継続可）
-        next: plan
+        next: brainstorm
       - condition: 確認不可（継続可）
-        next: plan
+        next: brainstorm
+      - condition: ai("上記いずれにも該当しない")
+        next: brainstorm
 
-  # ===== Phase 4: 適応型バッチ実装 =====
-  # スケジューラー: tasks.md の流動を見てバッチ決定
-  - name: plan
-    edit: false
+  # ===== Phase 1: 要件・設計ブレインストーミング =====
+  - name: brainstorm
+    edit: true
     persona: planner
-    policy: pr-batch-size
-    knowledge: architecture
+    knowledge:
+      - architecture
     provider_options:
       claude:
         allowed_tools:
           - Read
           - Glob
           - Grep
+          - Write
           - Bash
           - WebSearch
           - WebFetch
-    instruction: plan
+    required_permission_mode: edit
+    instruction: brainstorm
     output_contracts:
       report:
-        - name: 00-plan.md
-          format: plan
+        - name: spec-created.md
+          format: sp-spec-created
     rules:
-      - condition: 未着手の逐次タスクあり
-        next: implement
-      - condition: PRバッチ完了（残タスクあり、今回セッションを完了してよい）
-        next: ai_review
-      - condition: 全タスク完了
-        next: ai_review
-      - condition: tasks.mdが存在しない、または空
+      - condition: "SPEC: ready"
+        next: write-plan
+      - condition: "SPEC: needs-revision"
+        next: brainstorm
+      - condition: ai("上記いずれにも該当しない")
         next: ABORT
-        appendix: |
-          tasks.md が見つからないか空です。
-          sdd-tasks ピースを先に実行してください。
-      - condition: 要件が不明確、情報不足
-        next: ABORT
-        appendix: |
-          確認事項:
-          - {質問1}
-          - {質問2}
 
-  # 逐次実装: バッチ内タスクのみ実装
+  # ===== Phase 2: 計画ファイル生成 =====
+  - name: write-plan
+    edit: true
+    persona: planner
+    policy: pr-batch-size
+    knowledge:
+      - architecture
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
+    required_permission_mode: edit
+    instruction: write-plan
+    output_contracts:
+      report:
+        - name: plan-created.md
+          format: sp-plan-created
+    rules:
+      - condition: "PLAN: ready"
+        next: implement
+      - condition: "PLAN: needs-revision"
+        next: brainstorm
+      - condition: ai("上記いずれにも該当しない")
+        next: ABORT
+
+  # ===== Phase 3: 実装 (subagent-driven + TDD) =====
   - name: implement
     edit: true
     persona: coder
@@ -348,78 +224,22 @@ movements:
     instruction: implement
     output_contracts:
       report:
-        - name: coder-scope.md
-          format: coder-scope
-        - name: coder-decisions.md
-          format: coder-decisions
+        - name: implementation-status.md
+          format: sp-implementation-status
     rules:
-      - condition: バッチの実装完了
-        next: plan
-      - condition: 実装中に問題発生、計画の見直しが必要
-        next: plan
-      - condition: 判断できない、情報不足
-        next: plan
+      - condition: "IMPL: complete"
+        next: verify
+      - condition: "IMPL: partial"
+        next: implement
+      - condition: "IMPL: blocked"
+        next: supervise
+      - condition: ai("上記いずれにも該当しない")
+        next: supervise
 
-  - name: ai_review
+  # ===== Phase 4: 検証 =====
+  - name: verify
     edit: false
-    persona: ai-antipattern-reviewer
-    policy:
-      - review
-      - ai-antipattern
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - WebSearch
-          - WebFetch
-    instruction: ai-review
-    output_contracts:
-      report:
-        - name: 04-ai-review.md
-          format: ai-review
-    rules:
-      - condition: AI特有の問題なし
-        next: reviewers
-      - condition: AI特有の問題あり
-        next: ai_fix
-
-  - name: ai_fix
-    edit: true
-    persona: coder
-    policy:
-      - coding
-      - testing
-    session: refresh
-    knowledge:
-      - backend
-      - architecture
-    provider_options:
-      claude:
-        allowed_tools:
-          - Read
-          - Glob
-          - Grep
-          - Edit
-          - Write
-          - Bash
-          - WebSearch
-          - WebFetch
-    required_permission_mode: edit
-    pass_previous_response: false
-    instruction: ai-fix
-    rules:
-      - condition: AI問題の修正完了
-        next: ai_review
-      - condition: 修正不要（指摘対象ファイル/仕様の確認済み）
-        next: ai_no_fix
-      - condition: 判断できない、情報不足
-        next: ai_no_fix
-
-  - name: ai_no_fix
-    edit: false
-    persona: architecture-reviewer
+    persona: supervisor
     policy: review
     provider_options:
       claude:
@@ -427,14 +247,21 @@ movements:
           - Read
           - Glob
           - Grep
-    instruction: arbitrate
+          - Bash
+    instruction: verify
+    output_contracts:
+      report:
+        - name: verification-result.md
+          format: sp-verification-result
     rules:
-      - condition: ai_reviewの指摘が妥当（修正すべき）
-        next: ai_fix
-      - condition: ai_fixの判断が妥当（修正不要）
+      - condition: "VERIFY: pass"
         next: reviewers
+      - condition: "VERIFY: fail"
+        next: implement
+      - condition: ai("上記いずれにも該当しない")
+        next: supervise
 
-  # ===== Phase 5: レビュー =====
+  # ===== Phase 5: パラレルレビュー =====
   - name: reviewers
     parallel:
       - name: arch-review
@@ -460,6 +287,33 @@ movements:
         rules:
           - condition: approved
           - condition: needs_fix
+          - condition: ai("上記いずれにも該当しない")
+
+      - name: security-review
+        edit: false
+        persona: security-reviewer
+        policy: review
+        knowledge:
+          - architecture
+          - backend
+          - security
+        provider_options:
+          claude:
+            allowed_tools:
+              - Read
+              - Glob
+              - Grep
+              - WebSearch
+              - WebFetch
+        instruction: review-security
+        output_contracts:
+          report:
+            - name: 05b-security-review.md
+              format: security-review
+        rules:
+          - condition: approved
+          - condition: needs_fix
+          - condition: ai("上記いずれにも該当しない")
 
       - name: qa-review
         edit: false
@@ -483,33 +337,17 @@ movements:
         rules:
           - condition: approved
           - condition: needs_fix
-
-      - name: impl-validation
-        edit: false
-        persona: supervisor
-        policy: review
-        provider_options:
-          claude:
-            allowed_tools:
-              - Read
-              - Glob
-              - Grep
-              - Bash
-        instruction: validate-impl
-        output_contracts:
-          report:
-            - name: 07-impl-validation.md
-              format: sdd-impl-validation
-        rules:
-          - condition: 検証合格
-          - condition: 検証不合格
+          - condition: ai("上記いずれにも該当しない")
 
     rules:
-      - condition: all("approved", "approved", "検証合格")
-        next: supervise
-      - condition: any("needs_fix", "検証不合格")
+      - condition: all("approved", "approved", "approved")
+        next: lint-gate
+      - condition: any("needs_fix")
         next: fix
+      - condition: ai("上記いずれにも該当しない")
+        next: supervise
 
+  # ===== Phase 6: 修正 (systematic-debugging) =====
   - name: fix
     edit: true
     persona: coder
@@ -517,6 +355,7 @@ movements:
       - coding
       - testing
     session: refresh
+    pass_previous_response: true
     knowledge:
       - backend
       - architecture
@@ -532,15 +371,43 @@ movements:
           - WebSearch
           - WebFetch
     required_permission_mode: edit
-    pass_previous_response: false
     instruction: fix
+    output_contracts:
+      report:
+        - name: debug-result.md
+          format: sp-debug-result
     rules:
-      - condition: 修正完了
+      - condition: "DEBUG: resolved"
         next: reviewers
-      - condition: 判断できない、情報不足
-        next: plan
+      - condition: "DEBUG: investigating"
+        next: fix
+      - condition: "DEBUG: escalate"
+        next: supervise
+      - condition: ai("上記いずれにも該当しない")
+        next: supervise
 
-  # ===== 最終検証 =====
+  # ===== Phase 7: PR前品質ゲート =====
+  - name: lint-gate
+    edit: false
+    persona: supervisor
+    policy: review
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+    instruction: lint-gate
+    rules:
+      - condition: 品質ゲート合格（lint/test/build）
+        next: supervise
+      - condition: 品質ゲート不合格（lint/test/build）
+        next: implement
+      - condition: ai("上記いずれにも該当しない")
+        next: supervise
+
+  # ===== Phase 8: 最終検証 =====
   - name: supervise
     edit: false
     persona: supervisor
@@ -555,39 +422,7 @@ movements:
           - WebSearch
           - WebFetch
     pass_previous_response: false
-    instruction: |
-      ## 監督フェーズ（PRバッチ完了対応）
-      今回は全タスク完了だけでなく、「現在のPRバッチが完了しており、残タスクは次回セッションへ回してよい」場合も完了可能です。
-
-      **実行ベース品質ゲート（追加・必須）**
-      - `lint` と `test` のコマンドをリポジトリ定義（make / task / just / package scripts / CI）から特定し、両方を実行して成功を確認する
-      - `lint` または `test` が未特定・未実行・失敗の場合は、`すべて問題なし` / `PRバッチ完了（残タスクありだが今回スコープ達成）` を選んではならない
-      - 最低限「プロジェクト標準の build コマンド」と対象テストの実行結果（コマンド・結果・失敗時の対応方針）を `supervisor-validation.md` に記録する（例: Go は `go build ./...`, Node は `npm run build`）
-      - `build` は該当する場合に実行し、失敗時は完了判定に進まない
-
-      **完了ゲート（追加・必須）**
-      - Critical / High の未解消指摘が 0 件であること
-      - Warning は許容理由が明記されたもの以外を 0 件であること
-      - 上記の件数は `07-impl-validation.md` とレビュー結果から根拠付きで確認する
-
-      **要件トレーサビリティ（追加・必須）**
-      - 指示書/Specの全要件について、実装箇所（ファイル:行）とテストケース（ファイル:テスト名）の1:1対応を確認する
-      - 紐付け漏れが1件でもある場合は完了判定に進まない
-
-      **OpenAPI契約整合（追加・必須）**
-      - OpenAPI定義と実装挙動の差分（成功/失敗ステータス、レスポンス型）を確認する
-      - 差分が1件でもある場合は完了判定に進まない
-
-      **再レビュー（追加・必須）**
-      - 修正後に前回指摘の解消状況チェックリスト（解消/未解消/許容）を確認する
-      - 未解消指摘が1件でもある場合は完了判定に進まない
-
-      **判定ルール（追加）**
-      - 今回バッチの実装品質・テスト・レビュー結果に重大な問題がない（`lint` / `test` 成功を含む）
-      - `00-plan.md` の PRバッチ進捗で現在バッチが完了扱いにできる
-      - tasks.md に未完了タスクが残っていても、別PRバッチ/将来バッチとして分離されている
-
-      上記を満たす場合は condition: `PRバッチ完了（残タスクありだが今回スコープ達成）` を選択してください。
+    instruction: supervise-pr-batch
     output_contracts:
       report:
         - name: supervisor-validation.md
@@ -597,8 +432,87 @@ movements:
           use_judge: false
     rules:
       - condition: すべて問題なし
-        next: COMPLETE
+        next: prepare-pr
       - condition: PRバッチ完了（残タスクありだが今回スコープ達成）
-        next: COMPLETE
+        next: prepare-pr
       - condition: 要求未達成、lint未実行、lint失敗、テスト未実行、テスト失敗、ビルドエラー、Critical/High未解消、Warning理由不足、トレーサビリティ漏れ、OpenAPI差分未解消、再レビュー未解消
-        next: plan
+        next: implement
+      - condition: ai("上記いずれにも該当しない")
+        next: prepare-pr
+
+  # ===== Phase 9: デリバリー =====
+  - name: prepare-pr
+    edit: true
+    persona: architecture-reviewer
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+          - Write
+    required_permission_mode: edit
+    instruction: prepare-pr
+    output_contracts:
+      report:
+        - name: 08-pr-preparation.md
+          format: pr-preparation
+    rules:
+      - condition: 準備完了（問題なし or 軽微な指摘のみ）
+        next: create-pr
+      - condition: 重大な問題あり（機密情報漏洩、テスト未実行等）
+        next: implement
+      - condition: 準備不可（ブランチ問題等）
+        next: ABORT
+        appendix: |
+          PR準備に失敗しました。
+          - {エラー詳細}
+      - condition: ai("上記いずれにも該当しない")
+        next: ABORT
+
+  - name: create-pr
+    edit: true
+    persona: supervisor
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Bash
+    required_permission_mode: edit
+    instruction: create-pr-movement
+    output_contracts:
+      report:
+        - name: 09-pr-created.md
+          format: pr-created
+    rules:
+      - condition: PR作成成功
+        next: post-pr-summary
+      - condition: PR既存（force push + 更新済み）
+        next: post-pr-summary
+      - condition: PR作成失敗
+        next: ABORT
+        appendix: |
+          PR作成に失敗しました。
+          - {エラー詳細}
+      - condition: ai("上記いずれにも該当しない")
+        next: post-pr-summary
+
+  - name: post-pr-summary
+    edit: false
+    persona: architecture-reviewer
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Bash
+    instruction: post-pr-summary
+    rules:
+      - condition: 完了
+        next: COMPLETE
+      - condition: コメントなし
+        next: COMPLETE
+      - condition: 投稿失敗
+        next: COMPLETE
+      - condition: ai("上記いずれにも該当しない")
+        next: COMPLETE

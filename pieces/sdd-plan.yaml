@@ -1,0 +1,124 @@
+name: sdd-plan
+description: SDD Phase 2 - 既存 spec から superpowers:writing-plans で実装計画ファイルを生成する
+piece_config:
+  provider_options:
+    codex:
+      network_access: true
+    opencode:
+      network_access: true
+max_movements: 6
+initial_movement: check-branch-freshness
+
+# --- カスタムファセット セクションマップ ---
+policies:
+  pr-batch-size: ../policies/pr-batch-size.md
+
+instructions:
+  check-branch-freshness: ../instructions/check-branch-freshness.md
+  load-spec: ../instructions/load-spec.md
+  write-plan: ../instructions/sp-write-plan.md
+
+report_formats:
+  branch-freshness-check: ../output-contracts/branch-freshness-check.md
+  sp-plan-created: ../output-contracts/sp-plan-created.md
+
+# --- ループ監視 ---
+loop_monitors:
+  - cycle:
+      - write-plan
+    threshold: 3
+    judge:
+      persona: supervisor
+      instruction: |
+        write-plan が {cycle_count} 回繰り返されました。
+
+        **参照するレポート:**
+        - plan: {report:plan-created.md}
+
+        **判断基準:**
+        - plan ファイルが実際に更新されているか
+        - プレースホルダや粒度不足の指摘が同じまま残っていないか
+      rules:
+        - condition: 健全（進捗あり）
+          next: write-plan
+        - condition: 非生産的（改善なし）
+          next: ABORT
+
+# --- Movement定義 ---
+movements:
+  - name: check-branch-freshness
+    edit: false
+    persona: planner
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+    instruction: check-branch-freshness
+    output_contracts:
+      report:
+        - name: branch-freshness.md
+          format: branch-freshness-check
+    rules:
+      - condition: 同期不要（継続推奨）
+        next: load-spec
+      - condition: 同期推奨（継続可）
+        next: load-spec
+      - condition: 確認不可（継続可）
+        next: load-spec
+      - condition: ai("上記いずれにも該当しない")
+        next: load-spec
+
+  - name: load-spec
+    edit: false
+    persona: planner
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+    instruction: load-spec
+    rules:
+      - condition: Spec有効
+        next: write-plan
+      - condition: Spec不足・不備
+        next: ABORT
+        appendix: |
+          docs/superpowers/specs/ 配下に有効な spec ファイルが見つかりません。
+          先に sdd-brainstorm を実行してください。
+      - condition: ai("上記いずれにも該当しない")
+        next: ABORT
+
+  - name: write-plan
+    edit: true
+    persona: planner
+    policy: pr-batch-size
+    knowledge:
+      - architecture
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
+    required_permission_mode: edit
+    instruction: write-plan
+    output_contracts:
+      report:
+        - name: plan-created.md
+          format: sp-plan-created
+    rules:
+      - condition: "PLAN: ready"
+        next: COMPLETE
+      - condition: "PLAN: needs-revision"
+        next: write-plan
+      - condition: ai("上記いずれにも該当しない")
+        next: ABORT

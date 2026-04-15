@@ -1,0 +1,97 @@
+name: sdd-brainstorm
+description: SDD Phase 1 - superpowers:brainstorming で要件・設計を合意し spec ファイルを生成する
+piece_config:
+  provider_options:
+    codex:
+      network_access: true
+    opencode:
+      network_access: true
+max_movements: 6
+initial_movement: check-branch-freshness
+
+# --- カスタムファセット セクションマップ ---
+instructions:
+  check-branch-freshness: ../instructions/check-branch-freshness.md
+  brainstorm: ../instructions/sp-brainstorm.md
+
+report_formats:
+  branch-freshness-check: ../output-contracts/branch-freshness-check.md
+  sp-spec-created: ../output-contracts/sp-spec-created.md
+
+# --- ループ監視 ---
+loop_monitors:
+  - cycle:
+      - brainstorm
+    threshold: 3
+    judge:
+      persona: supervisor
+      instruction: |
+        brainstorm が {cycle_count} 回繰り返されました。
+
+        **参照するレポート:**
+        - spec: {report:spec-created.md}
+
+        **判断基準:**
+        - spec の内容が実際に更新されているか
+        - 同じ needs-revision が繰り返されていないか (曖昧要件のサイン)
+      rules:
+        - condition: 健全（進捗あり）
+          next: brainstorm
+        - condition: 非生産的（改善なし）
+          next: ABORT
+
+# --- Movement定義 ---
+movements:
+  - name: check-branch-freshness
+    edit: false
+    persona: planner
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Bash
+    instruction: check-branch-freshness
+    output_contracts:
+      report:
+        - name: branch-freshness.md
+          format: branch-freshness-check
+    rules:
+      - condition: 同期不要（継続推奨）
+        next: brainstorm
+      - condition: 同期推奨（継続可）
+        next: brainstorm
+      - condition: 確認不可（継続可）
+        next: brainstorm
+      - condition: ai("上記いずれにも該当しない")
+        next: brainstorm
+
+  - name: brainstorm
+    edit: true
+    persona: planner
+    knowledge:
+      - architecture
+    provider_options:
+      claude:
+        allowed_tools:
+          - Read
+          - Glob
+          - Grep
+          - Write
+          - Bash
+          - WebSearch
+          - WebFetch
+    required_permission_mode: edit
+    instruction: brainstorm
+    output_contracts:
+      report:
+        - name: spec-created.md
+          format: sp-spec-created
+    rules:
+      - condition: "SPEC: ready"
+        next: COMPLETE
+      - condition: "SPEC: needs-revision"
+        next: brainstorm
+      - condition: ai("上記いずれにも該当しない")
+        next: ABORT
